@@ -1,7 +1,7 @@
 # This example requires the 'message_content' privileged intent to function.
 
 import asyncio
-
+import os
 import discord
 import json
 import yt_dlp as youtube_dl
@@ -85,12 +85,65 @@ class Music(commands.Cog):
 
     @commands.command()
     async def play(self, ctx, *, query):
-        """Plays a file from the local filesystem"""
+        """Plays a local file from filesystem or downloads from YouTube using yt-dlp"""
+        if os.path.exists("custom-name.mp4"):  
+            os.remove("custom-name.mp4")
+        # Ensure bot is in voice channel
+        if ctx.voice_client is None:
+            if ctx.author.voice:
+                await ctx.author.voice.channel.connect()
+            else:
+                await ctx.send("You must be in a voice channel to use this command!")
+                return
 
-        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
-        ctx.voice_client.play(source, after=lambda e: print(f'Player error: {e}') if e else None)
+        vc = ctx.voice_client
+        if vc.is_playing():
+            vc.stop()
 
-        await ctx.send(f'Now playing: {query}')
+        # Prepare the command for yt-dlp
+        ytdlp_cmd = [
+            "./yt-dlp",
+            query,  # can be URL or search term
+            "--cookies", "../cookies.txt",
+            "--extractor-args", "youtube:player_skip=configs,js,ios;player_client=webpage,android,web",
+            "--concurrent-fragments", "12",
+            "--no-warnings",
+            "--no-colors",
+            "--quiet",
+            "--no-mtime",
+            "--no-post-overwrites",
+            "--no-embed-subs",
+            "-o", "custom-name.mp4"
+        ]
+
+        # Run yt-dlp in a subprocess
+        try:
+            await ctx.send(f"⏳ Downloading/streaming **{query}**...")
+            process = await asyncio.create_subprocess_exec(
+                *ytdlp_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            stdout, stderr = await process.communicate()
+            if process.returncode != 0:
+                await ctx.send(f"❌ Failed to download: {stderr.decode().strip()}")
+                print(stderr.decode())
+                return
+
+        except Exception as e:
+            await ctx.send(f"❌ Error running yt-dlp: {e}")
+            print(e)
+            return
+
+        # Play the downloaded file
+        try:
+            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio("custom-name.mp4"))
+            vc.play(source, after=lambda e: print(f"Player error: {e}") if e else None)
+            await ctx.send(f"▶️ Now playing: **{query}**")
+        except Exception as e:
+            await ctx.send(f"❌ Failed to play audio: {e}")
+            print(e)
 
     @commands.command()
     async def yt(self, ctx, *, url):
