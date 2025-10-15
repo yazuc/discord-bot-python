@@ -2,58 +2,86 @@
 
 import asyncio
 import os
+import subprocess
 import discord
 import json
 import yt_dlp as youtube_dl
 
 from discord.ext import commands
 
-# Suppress noise about console usage from errors
-youtube_dl.utils.bug_reports_message = lambda: ''
-
-
-ytdl_format_options = {
-    'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
-}
-
-ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
-
-
-class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.5):
-        super().__init__(source, volume)
-
-        self.data = data
-
-        self.title = data.get('title')
-        self.url = data.get('url')
-
-    @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
-        loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-
-        if 'entries' in data:
-            # take first item from a playlist
-            data = data['entries'][0]
-
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, options='-vn'), data=data)
-
 
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.queue = []
+        self.playing = []
+
+    async def play_youtube_url(self, ctx, url):
+        """Plays audio directly from a YouTube URL using yt_dlp and FFmpeg."""
+        vc = ctx.voice_client
+        self.playing.append(url)
+        print(self.queue)
+
+        if vc is None:
+            if ctx.author.voice:
+                await ctx.author.voice.channel.connect()
+                vc = ctx.voice_client
+            else:
+                await ctx.send("Tu precisa estar em um canal de voz........")
+                return
+
+        if vc.is_playing():            
+            vc.stop()
+
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'quiet': True,
+            'noplaylist': True
+        }
+
+        try:
+            await ctx.send(f"Carregando sua música")
+
+            # Extract info directly (no subprocess)
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=False)
+                audio_url = info_dict['url']
+                title = info_dict.get('title', 'desconhecido')
+
+            ffmpeg_options = {
+                'options': '-vn'
+            }
+
+            # Create and play source
+            source = discord.FFmpegPCMAudio(audio_url, **ffmpeg_options)
+            vc.play(source, after=lambda e: print(f"[DEBUG] Player error: {e}") if e else None)
+
+            await ctx.send(f"Tocando agora: **{title}**")
+
+            # Espera o áudio terminar
+            while vc.is_playing() or vc.is_paused():
+                await asyncio.sleep(1)
+
+            await ctx.send("Música terminou!")
+            self.queue.pop(url)
+
+        except Exception as e:
+            await ctx.send(f"❌ Ocorreu um erro: {e}")
+            print(f"[ERRO] {e}")
+
+    # --------------------------------------------------------
+    # COMANDO USANDO O MÉTODO
+    # --------------------------------------------------------
+    @commands.command()
+    async def yt(self, ctx, *, url):
+        """Streams a YouTube URL directly (without downloading)."""
+        print(self)
+        if(len(self.playing) == 0):
+            await self.play_youtube_url(ctx, url)
+        else:
+            self.queue.append(url)
+        
+
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel = None):
@@ -82,13 +110,11 @@ class Music(commands.Cog):
             print(f"[ERRO] Falha ao conectar: {e}")
             await ctx.send(f"❌ Erro ao tentar entrar em **{channel.name}**: {e}")
 
-
     @commands.command()
-    async def play(self, ctx, *, query):
-        """Plays a local file from filesystem or downloads from YouTube using yt-dlp"""
-        if os.path.exists("custom-name.mp4"):  
-            os.remove("custom-name.mp4")
-        # Ensure bot is in voice channel
+    async def stream(self, ctx, *, query):
+        """Streams audio from YouTube into Discord without saving files"""
+
+        # Ensure bot is in a voice channel
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
@@ -100,10 +126,54 @@ class Music(commands.Cog):
         if vc.is_playing():
             vc.stop()
 
+        try:
+            await ctx.send(f"⏳ Streaming **{query}**...")
+
+            # Start yt-dlp subprocess
+            ytdlp_proc = subprocess.Popen(
+                ["./yt-dlp", "-f", "bestaudio", "-o", "-", "--quiet", query],
+                stdout=subprocess.PIPE
+            )
+
+            # Pipe yt-dlp stdout into ffmpeg subprocess
+            ffmpeg_proc = subprocess.Popen(
+                ["ffmpeg", "-i", "pipe:0", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"],
+                stdin=ytdlp_proc.stdout,
+                stdout=subprocess.PIPE
+            )
+
+            # Pass ffmpeg stdout to Discord
+            source = discord.FFmpegPCMAudio(ffmpeg_proc.stdout, pipe=True)
+            vc.play(source, after=lambda e: print(f"Player error: {e}") if e else None)
+
+            await ctx.send(f"▶️ Now playing: **{query}**")
+
+        except Exception as e:
+            await ctx.send(f"❌ Failed to stream audio: {e}")
+            print(e)
+
+
+    @commands.command()
+    async def play(self, ctx, *, query):
+        """Plays a local file from filesystem or downloads from YouTube using yt-dlp"""
+        if os.path.exists("custom-name.mp4"):  
+            os.remove("custom-name.mp4")
+        # Ensure bot is in voice channel
+        if ctx.voice_client is None:
+            if ctx.author.voice:
+                await ctx.author.voice.channel.connect()
+            else:
+                await ctx.send("Tu precisa estar em um canal de voz........")
+                return
+
+        vc = ctx.voice_client
+        if vc.is_playing():
+            vc.stop()
+
         # Prepare the command for yt-dlp
         ytdlp_cmd = [
             "./yt-dlp",
-            query,  # can be URL or search term
+            query,  
             "--cookies", "../cookies.txt",
             "--extractor-args", "youtube:player_skip=configs,js,ios;player_client=webpage,android,web",
             "--concurrent-fragments", "12",
@@ -118,7 +188,7 @@ class Music(commands.Cog):
 
         # Run yt-dlp in a subprocess
         try:
-            await ctx.send(f"⏳ Downloading/streaming **{query}**...")
+            await ctx.send(f"Baixando a música do betinha")
             process = await asyncio.create_subprocess_exec(
                 *ytdlp_cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -140,30 +210,10 @@ class Music(commands.Cog):
         try:
             source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio("custom-name.mp4"))
             vc.play(source, after=lambda e: print(f"Player error: {e}") if e else None)
-            await ctx.send(f"▶️ Now playing: **{query}**")
+            await ctx.send(f"Tocando essa merda ai.")
         except Exception as e:
             await ctx.send(f"❌ Failed to play audio: {e}")
             print(e)
-
-    @commands.command()
-    async def yt(self, ctx, *, url):
-        """Plays from a url (almost anything youtube_dl supports)"""
-
-        async with ctx.typing():
-            player = await YTDLSource.from_url(url, loop=self.bot.loop)
-            ctx.voice_client.play(player, after=lambda e: print(f'Player error: {e}') if e else None)
-
-        await ctx.send(f'Now playing: {player.title}')
-
-    @commands.command()
-    async def stream(self, ctx, *, url):
-        """Streams from a url (same as yt, but doesn't predownload)"""
-
-        async with ctx.typing():
-            player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-            ctx.voice_client.play(player, after=lambda e: print(f'Player error: {e}') if e else None)
-
-        await ctx.send(f'Now playing: {player.title}')
 
     @commands.command()
     async def custom(self, ctx):
