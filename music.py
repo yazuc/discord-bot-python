@@ -96,13 +96,13 @@ class Music(commands.Cog):
     @commands.command()
     async def play(self, ctx, *, url):
         """Streams a YouTube URL directly (without downloading)."""       
+        await self.play_youtube_url(ctx, url)
         
-        print(self.playing)
-        if(self.playing == False):
-            await self.play_youtube_url(ctx, url)
-        else:
-            self.queue.append(url)
-            print(self.queue)
+        # print(self.playing)
+        # if(self.playing == False):
+        # else:
+        #     self.queue.append(url)
+        #     print(self.queue)
         
 
 
