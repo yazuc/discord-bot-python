@@ -14,14 +14,13 @@ class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.queue = []
-        self.playing = []
+        self.playing = False
 
     async def play_youtube_url(self, ctx, url):
         """Plays audio directly from a YouTube URL using yt_dlp and FFmpeg."""
-        vc = ctx.voice_client
-        self.playing.append(url)
-        print(self.queue)
+        vc = ctx.voice_client       
 
+        self.playing = True
         if vc is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
@@ -30,13 +29,28 @@ class Music(commands.Cog):
                 await ctx.send("Tu precisa estar em um canal de voz........")
                 return
 
-        if vc.is_playing():            
-            vc.stop()
+        # if vc.is_playing():            
+        #     vc.stop()
 
         ydl_opts = {
             'format': 'bestaudio/best',
             'quiet': True,
-            'noplaylist': True
+            'noplaylist': True,
+            'cookiefile': './cookies.txt',  # caminho para cookies
+            'extractor_args': {
+                'youtube': {
+                    'player_skip': ['configs', 'js', 'ios'],
+                    'player_client': ['webpage', 'android', 'web']
+                }
+            },
+            'concurrent_fragment_downloads': 12,
+            'no_warnings': True,
+            'nocheckcertificate': True,
+            'outtmpl': 'custom-name.mp4',  # só usado se for baixar (você está streamando)
+            'overwrites': False,
+            'writethumbnail': False,
+            'writesubtitles': False,
+            'source_address': '0.0.0.0',  # evita problemas de rede no Raspberry
         }
 
         try:
@@ -60,6 +74,7 @@ class Music(commands.Cog):
 
             # Espera o áudio terminar
             while vc.is_playing() or vc.is_paused():
+                # self.playing = False
                 await asyncio.sleep(1)
 
             await ctx.send("Música terminou!")
@@ -74,12 +89,14 @@ class Music(commands.Cog):
     # --------------------------------------------------------
     @commands.command()
     async def play(self, ctx, *, url):
-        """Streams a YouTube URL directly (without downloading)."""
-        print(self)
-        if(len(self.playing) == 0):
+        """Streams a YouTube URL directly (without downloading)."""       
+        
+        print(self.playing)
+        if(self.playing == False):
             await self.play_youtube_url(ctx, url)
         else:
             self.queue.append(url)
+            print(self.queue)
         
 
 
@@ -183,7 +200,7 @@ async def on_ready():
     # Tell the type checker that User is filled up at this point
     assert bot.user is not None
 
-    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    print(f'gay sex as {bot.user} (ID: {bot.user.id})')
     print('------')
 
 
