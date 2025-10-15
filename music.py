@@ -73,7 +73,7 @@ class Music(commands.Cog):
     # COMANDO USANDO O MÉTODO
     # --------------------------------------------------------
     @commands.command()
-    async def yt(self, ctx, *, url):
+    async def play(self, ctx, *, url):
         """Streams a YouTube URL directly (without downloading)."""
         print(self)
         if(len(self.playing) == 0):
@@ -153,67 +153,67 @@ class Music(commands.Cog):
             print(e)
 
 
-    @commands.command()
-    async def play(self, ctx, *, query):
-        """Plays a local file from filesystem or downloads from YouTube using yt-dlp"""
-        if os.path.exists("custom-name.mp4"):  
-            os.remove("custom-name.mp4")
-        # Ensure bot is in voice channel
-        if ctx.voice_client is None:
-            if ctx.author.voice:
-                await ctx.author.voice.channel.connect()
-            else:
-                await ctx.send("Tu precisa estar em um canal de voz........")
-                return
+    # @commands.command()
+    # async def play(self, ctx, *, query):
+    #     """Plays a local file from filesystem or downloads from YouTube using yt-dlp"""
+    #     if os.path.exists("custom-name.mp4"):  
+    #         os.remove("custom-name.mp4")
+    #     # Ensure bot is in voice channel
+    #     if ctx.voice_client is None:
+    #         if ctx.author.voice:
+    #             await ctx.author.voice.channel.connect()
+    #         else:
+    #             await ctx.send("Tu precisa estar em um canal de voz........")
+    #             return
 
-        vc = ctx.voice_client
-        if vc.is_playing():
-            vc.stop()
+    #     vc = ctx.voice_client
+    #     if vc.is_playing():
+    #         vc.stop()
 
-        # Prepare the command for yt-dlp
-        ytdlp_cmd = [
-            "./yt-dlp",
-            query,  
-            "--cookies", "../cookies.txt",
-            "--extractor-args", "youtube:player_skip=configs,js,ios;player_client=webpage,android,web",
-            "--concurrent-fragments", "12",
-            "--no-warnings",
-            "--no-colors",
-            "--quiet",
-            "--no-mtime",
-            "--no-post-overwrites",
-            "--no-embed-subs",
-            "-o", "custom-name.mp4"
-        ]
+    #     # Prepare the command for yt-dlp
+    #     ytdlp_cmd = [
+    #         "./yt-dlp",
+    #         query,  
+    #         "--cookies", "../cookies.txt",
+    #         "--extractor-args", "youtube:player_skip=configs,js,ios;player_client=webpage,android,web",
+    #         "--concurrent-fragments", "12",
+    #         "--no-warnings",
+    #         "--no-colors",
+    #         "--quiet",
+    #         "--no-mtime",
+    #         "--no-post-overwrites",
+    #         "--no-embed-subs",
+    #         "-o", "custom-name.mp4"
+    #     ]
 
-        # Run yt-dlp in a subprocess
-        try:
-            await ctx.send(f"Baixando a música do betinha")
-            process = await asyncio.create_subprocess_exec(
-                *ytdlp_cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
+    #     # Run yt-dlp in a subprocess
+    #     try:
+    #         await ctx.send(f"Baixando a música do betinha")
+    #         process = await asyncio.create_subprocess_exec(
+    #             *ytdlp_cmd,
+    #             stdout=asyncio.subprocess.PIPE,
+    #             stderr=asyncio.subprocess.PIPE
+    #         )
 
-            stdout, stderr = await process.communicate()
-            if process.returncode != 0:
-                await ctx.send(f"❌ Failed to download: {stderr.decode().strip()}")
-                print(stderr.decode())
-                return
+    #         stdout, stderr = await process.communicate()
+    #         if process.returncode != 0:
+    #             await ctx.send(f"❌ Failed to download: {stderr.decode().strip()}")
+    #             print(stderr.decode())
+    #             return
 
-        except Exception as e:
-            await ctx.send(f"❌ Error running yt-dlp: {e}")
-            print(e)
-            return
+    #     except Exception as e:
+    #         await ctx.send(f"❌ Error running yt-dlp: {e}")
+    #         print(e)
+    #         return
 
-        # Play the downloaded file
-        try:
-            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio("custom-name.mp4"))
-            vc.play(source, after=lambda e: print(f"Player error: {e}") if e else None)
-            await ctx.send(f"Tocando essa merda ai.")
-        except Exception as e:
-            await ctx.send(f"❌ Failed to play audio: {e}")
-            print(e)
+    #     # Play the downloaded file
+    #     try:
+    #         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio("custom-name.mp4"))
+    #         vc.play(source, after=lambda e: print(f"Player error: {e}") if e else None)
+    #         await ctx.send(f"Tocando essa merda ai.")
+    #     except Exception as e:
+    #         await ctx.send(f"❌ Failed to play audio: {e}")
+    #         print(e)
 
     @commands.command()
     async def custom(self, ctx):
