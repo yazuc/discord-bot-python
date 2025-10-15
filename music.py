@@ -63,7 +63,7 @@ class Music(commands.Cog):
                 await asyncio.sleep(1)
 
             await ctx.send("Música terminou!")
-            self.queue.pop(url)
+            # self.queue.pop(url)
 
         except Exception as e:
             await ctx.send(f"❌ Ocorreu um erro: {e}")
@@ -109,111 +109,6 @@ class Music(commands.Cog):
         except Exception as e:
             print(f"[ERRO] Falha ao conectar: {e}")
             await ctx.send(f"❌ Erro ao tentar entrar em **{channel.name}**: {e}")
-
-    @commands.command()
-    async def stream(self, ctx, *, query):
-        """Streams audio from YouTube into Discord without saving files"""
-
-        # Ensure bot is in a voice channel
-        if ctx.voice_client is None:
-            if ctx.author.voice:
-                await ctx.author.voice.channel.connect()
-            else:
-                await ctx.send("You must be in a voice channel to use this command!")
-                return
-
-        vc = ctx.voice_client
-        if vc.is_playing():
-            vc.stop()
-
-        try:
-            await ctx.send(f"⏳ Streaming **{query}**...")
-
-            # Start yt-dlp subprocess
-            ytdlp_proc = subprocess.Popen(
-                ["./yt-dlp", "-f", "bestaudio", "-o", "-", "--quiet", query],
-                stdout=subprocess.PIPE
-            )
-
-            # Pipe yt-dlp stdout into ffmpeg subprocess
-            ffmpeg_proc = subprocess.Popen(
-                ["ffmpeg", "-i", "pipe:0", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"],
-                stdin=ytdlp_proc.stdout,
-                stdout=subprocess.PIPE
-            )
-
-            # Pass ffmpeg stdout to Discord
-            source = discord.FFmpegPCMAudio(ffmpeg_proc.stdout, pipe=True)
-            vc.play(source, after=lambda e: print(f"Player error: {e}") if e else None)
-
-            await ctx.send(f"▶️ Now playing: **{query}**")
-
-        except Exception as e:
-            await ctx.send(f"❌ Failed to stream audio: {e}")
-            print(e)
-
-
-    # @commands.command()
-    # async def play(self, ctx, *, query):
-    #     """Plays a local file from filesystem or downloads from YouTube using yt-dlp"""
-    #     if os.path.exists("custom-name.mp4"):  
-    #         os.remove("custom-name.mp4")
-    #     # Ensure bot is in voice channel
-    #     if ctx.voice_client is None:
-    #         if ctx.author.voice:
-    #             await ctx.author.voice.channel.connect()
-    #         else:
-    #             await ctx.send("Tu precisa estar em um canal de voz........")
-    #             return
-
-    #     vc = ctx.voice_client
-    #     if vc.is_playing():
-    #         vc.stop()
-
-    #     # Prepare the command for yt-dlp
-    #     ytdlp_cmd = [
-    #         "./yt-dlp",
-    #         query,  
-    #         "--cookies", "../cookies.txt",
-    #         "--extractor-args", "youtube:player_skip=configs,js,ios;player_client=webpage,android,web",
-    #         "--concurrent-fragments", "12",
-    #         "--no-warnings",
-    #         "--no-colors",
-    #         "--quiet",
-    #         "--no-mtime",
-    #         "--no-post-overwrites",
-    #         "--no-embed-subs",
-    #         "-o", "custom-name.mp4"
-    #     ]
-
-    #     # Run yt-dlp in a subprocess
-    #     try:
-    #         await ctx.send(f"Baixando a música do betinha")
-    #         process = await asyncio.create_subprocess_exec(
-    #             *ytdlp_cmd,
-    #             stdout=asyncio.subprocess.PIPE,
-    #             stderr=asyncio.subprocess.PIPE
-    #         )
-
-    #         stdout, stderr = await process.communicate()
-    #         if process.returncode != 0:
-    #             await ctx.send(f"❌ Failed to download: {stderr.decode().strip()}")
-    #             print(stderr.decode())
-    #             return
-
-    #     except Exception as e:
-    #         await ctx.send(f"❌ Error running yt-dlp: {e}")
-    #         print(e)
-    #         return
-
-    #     # Play the downloaded file
-    #     try:
-    #         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio("custom-name.mp4"))
-    #         vc.play(source, after=lambda e: print(f"Player error: {e}") if e else None)
-    #         await ctx.send(f"Tocando essa merda ai.")
-    #     except Exception as e:
-    #         await ctx.send(f"❌ Failed to play audio: {e}")
-    #         print(e)
 
     @commands.command()
     async def custom(self, ctx):
@@ -262,8 +157,6 @@ class Music(commands.Cog):
         await ctx.voice_client.disconnect()
 
     @play.before_invoke
-    @yt.before_invoke
-    @stream.before_invoke
     async def ensure_voice(self, ctx):
         if ctx.voice_client is None:
             if ctx.author.voice:
