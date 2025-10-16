@@ -114,9 +114,15 @@ class Music(commands.Cog):
         print(self.queue)
 
     @commands.command()
-    async def f(self, ctx, *, url):
+    async def f(self, ctx,):
         """Para visualizar a fila atual"""     
-        await ctx.send(self.queue)        
+        await ctx.send("As músicas a seguinte estão na fila:")
+        
+        musicas = ""
+        for x in list(self.queue._queue):
+            musicas += x + "\n"
+
+        await ctx.send(musicas)        
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel = None):
