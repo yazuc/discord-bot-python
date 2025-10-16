@@ -116,8 +116,12 @@ class Music(commands.Cog):
     @commands.command()
     async def f(self, ctx,):
         """Para visualizar a fila atual"""     
-        await ctx.send("As músicas a seguinte estão na fila:")
+        if(self.queue.empty()):
+            await ctx.send("Fila vazia")
+            return
         
+        await ctx.send("As músicas a seguinte estão na fila:")
+
         musicas = ""
         for x in list(self.queue._queue):
             musicas += x + "\n"
