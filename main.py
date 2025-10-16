@@ -1,19 +1,10 @@
-# This example requires the 'message_content' intent.
+import yt_dlp
 
-import discord, json
+def search_youtube(query):
+    ydl_opts = {"format": "bestaudio/best", "noplaylist": True}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        result = ydl.extract_info(f"ytsearch1:{query}", download=False)['entries'][0]
+    return result['webpage_url']
 
-class MyClient(discord.Client):
-    async def on_ready(self):
-        print(f'Logged on as {self.user}!')
-
-    async def on_message(self, message):
-        print(f'Message from {message.author}: {message.content}')
-
-f = open("./appconfig.json")
-o = json.loads(f.read())
-
-intents = discord.Intents.default()
-intents.message_content = True
-
-client = MyClient(intents=intents)
-client.run(o['DISCORD_BOT_ID'])
+url = search_youtube("Gangstar Torture Dance FULL SONG JoJo")
+print(url)

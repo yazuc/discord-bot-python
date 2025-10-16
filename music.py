@@ -6,14 +6,15 @@ import subprocess
 import discord
 import json
 import yt_dlp as youtube_dl
-
+from youtubesearchpython import VideosSearch
+from youtubesearchpython import *
 from discord.ext import commands
 
 
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.queue = []
+        self.queue = asyncio.Queue()
         self.playing = False
 
     async def play_youtube_url(self, ctx, url):
@@ -29,8 +30,8 @@ class Music(commands.Cog):
                 await ctx.send("Tu precisa estar em um canal de voz........")
                 return
 
-        # if vc.is_playing():            
-        #     vc.stop()
+        if vc.is_playing():            
+            vc.stop()
 
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -58,9 +59,10 @@ class Music(commands.Cog):
 
             # Extract info directly (no subprocess)
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                info_dict = ydl.extract_info(url, download=False)
-                audio_url = info_dict['url']
-                title = info_dict.get('title', 'desconhecido')
+                info_dict = ydl.extract_info(f"ytsearch1:{url}", download=False)
+                first_result = info_dict['entries'][0]
+                audio_url = first_result['url']
+                title = first_result.get('title', 'desconhecido')
 
             ffmpeg_options = {
                 'before_options': (
@@ -90,21 +92,23 @@ class Music(commands.Cog):
             await ctx.send(f"❌ Ocorreu um erro: {e}")
             print(f"[ERRO] {e}")
 
+    def search(query):
+        customSearch = CustomSearch(query, VideoUploadDateFilter.lastHour, limit = 20)     
+        print(customSearch[0].result()['result'][i]['link'])
+
     # --------------------------------------------------------
     # COMANDO USANDO O MÉTODO
     # --------------------------------------------------------
     @commands.command()
     async def play(self, ctx, *, url):
         """Streams a YouTube URL directly (without downloading)."""       
-        await self.play_youtube_url(ctx, url)
-        
-        # print(self.playing)
-        # if(self.playing == False):
-        # else:
-        #     self.queue.append(url)
-        #     print(self.queue)
-        
-
+        print(self.playing)
+        if not self.playing:
+            await self.play_youtube_url(ctx, url)
+        else:
+            self.queue.append(url)
+            print(self.queue)
+            
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel = None):
@@ -132,35 +136,6 @@ class Music(commands.Cog):
         except Exception as e:
             print(f"[ERRO] Falha ao conectar: {e}")
             await ctx.send(f"❌ Erro ao tentar entrar em **{channel.name}**: {e}")
-
-    @commands.command()
-    async def custom(self, ctx):
-        """Plays a local file named custom-name.mp4 from current folder"""
-
-        file_name = "custom-name.mp4"  # file must exist in same folder as script
-
-        # Ensure the bot is in a voice channel
-        if ctx.voice_client is None:
-            if ctx.author.voice:
-                await ctx.author.voice.channel.connect()
-            else:
-                await ctx.send("You must be in a voice channel to use this command!")
-                return
-
-        vc = ctx.voice_client
-
-        # Stop current playback if any
-        if vc.is_playing():
-            vc.stop()
-
-        try:
-            # Create audio source from local file
-            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(file_name))
-            vc.play(source, after=lambda e: print(f"Player error: {e}") if e else None)
-            await ctx.send(f"▶️ Now playing: **{file_name}**")
-        except Exception as e:
-            await ctx.send(f"❌ Failed to play {file_name}: {e}")
-            print(f"[ERROR] {e}")
 
 
     @commands.command()
