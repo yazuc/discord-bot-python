@@ -87,10 +87,8 @@ class Music(commands.Cog):
             if(not self.queue.empty()):
                 print("vai tocar a otra musica")
                 await self.play_youtube_url(ctx, await self.queue.get())
-
             
             await ctx.send("Música terminou!")
-            # self.queue.pop(url)
 
         except Exception as e:
             print(f"[ERRO] {e}")
@@ -100,7 +98,7 @@ class Music(commands.Cog):
     # --------------------------------------------------------
     @commands.command()
     async def play(self, ctx, *, url):
-        """Streams a YouTube URL directly (without downloading)."""       
+        """Para tocar a primeira música"""       
         print(self.playing)
         if not self.playing:
             await self.play_youtube_url(ctx, url)
@@ -110,9 +108,15 @@ class Music(commands.Cog):
 
     @commands.command()
     async def q(self, ctx, *, url):
+        """Para alimentar a fila enquanto já tiver tocando"""     
         await self.queue.put(url)
         await ctx.send("Música adicionada a fila.")
         print(self.queue)
+
+    @commands.command()
+    async def f(self, ctx, *, url):
+        """Para visualizar a fila atual"""     
+        await ctx.send(self.queue)        
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel = None):
