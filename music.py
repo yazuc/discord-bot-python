@@ -6,8 +6,6 @@ import subprocess
 import discord
 import json
 import yt_dlp as youtube_dl
-from youtubesearchpython import VideosSearch
-from youtubesearchpython import *
 from discord.ext import commands
 
 
@@ -16,6 +14,7 @@ class Music(commands.Cog):
         self.bot = bot
         self.queue = asyncio.Queue()
         self.playing = False
+
 
     async def play_youtube_url(self, ctx, url):
         """Plays audio directly from a YouTube URL using yt_dlp and FFmpeg."""
@@ -82,19 +81,19 @@ class Music(commands.Cog):
 
             # Espera o áudio terminar
             while vc.is_playing() or vc.is_paused():
-                # self.playing = False
+                # self.playing = False           
                 await asyncio.sleep(1)
 
+            if(not self.queue.empty()):
+                print("vai tocar a otra musica")
+                await self.play_youtube_url(ctx, await self.queue.get())
+
+            
             await ctx.send("Música terminou!")
             # self.queue.pop(url)
 
         except Exception as e:
-            await ctx.send(f"❌ Ocorreu um erro: {e}")
             print(f"[ERRO] {e}")
-
-    def search(query):
-        customSearch = CustomSearch(query, VideoUploadDateFilter.lastHour, limit = 20)     
-        print(customSearch[0].result()['result'][i]['link'])
 
     # --------------------------------------------------------
     # COMANDO USANDO O MÉTODO
@@ -106,9 +105,14 @@ class Music(commands.Cog):
         if not self.playing:
             await self.play_youtube_url(ctx, url)
         else:
-            self.queue.append(url)
+            await self.queue.put(url)
             print(self.queue)
-            
+
+    @commands.command()
+    async def q(self, ctx, *, url):
+        await self.queue.put(url)
+        await ctx.send("Música adicionada a fila.")
+        print(self.queue)
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel = None):
@@ -136,17 +140,6 @@ class Music(commands.Cog):
         except Exception as e:
             print(f"[ERRO] Falha ao conectar: {e}")
             await ctx.send(f"❌ Erro ao tentar entrar em **{channel.name}**: {e}")
-
-
-    @commands.command()
-    async def volume(self, ctx, volume: int):
-        """Changes the player's volume"""
-
-        if ctx.voice_client is None:
-            return await ctx.send('Not connected to a voice channel.')
-
-        ctx.voice_client.source.volume = volume / 100
-        await ctx.send(f'Changed volume to {volume}%')
 
     @commands.command()
     async def stop(self, ctx):
