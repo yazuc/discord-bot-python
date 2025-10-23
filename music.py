@@ -89,6 +89,7 @@ class Music(commands.Cog):
                 await self.play_youtube_url(ctx, await self.queue.get())
             
             await ctx.send("Música terminou!")
+            self.playing = False
 
         except Exception as e:
             print(f"[ERRO] {e}")
@@ -157,7 +158,7 @@ class Music(commands.Cog):
 
     @commands.command()
     async def stop(self, ctx):
-        """Stops and disconnects the bot from voice"""
+        """disconecta do voice"""
 
         await ctx.voice_client.disconnect()
 
@@ -178,7 +179,7 @@ intents.message_content = True
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned_or('!'),
-    description='Relatively simple music bot example',
+    description='Echo echo supremo',
     intents=intents,
 )
 
