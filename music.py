@@ -194,11 +194,18 @@ async def on_ready():
 
 
 async def main():
-    f = open("./appconfig.json")
-    o = json.loads(f.read())
-    async with bot:
-        await bot.add_cog(Music(bot))
-        await bot.start(o['DISCORD_BOT_ID'])
+    try:
+        f = open("./appconfig.json")
+        o = json.loads(f.read())
+        async with bot:
+            await bot.add_cog(Music(bot))
+            await bot.start(o['DISCORD_BOT_ID'])
+    except Exception as e:
+        with open("output.txt", "w") as out:
+            out.write("An error occurred:\n")
+            out.write(str(e) + "\n\n")
+            out.write("Traceback:\n")
+            out.write(traceback.format_exc())
 
 
 asyncio.run(main())
