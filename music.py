@@ -59,9 +59,14 @@ class Music(commands.Cog):
             # Extract info directly (no subprocess)
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(f"ytsearch1:{url}", download=False)
-                first_result = info_dict['entries'][0]
-                audio_url = first_result['url']
-                title = first_result.get('title', 'desconhecido')
+                if len(info_dict['entries']) > 0:
+                    first_result = info_dict['entries'][0]
+                    audio_url = first_result['url']
+                    title = first_result.get('title', 'desconhecido')
+                else:
+                    await ctx.send(f"Erro ao reproduzir música.")
+                    self.playing = False
+                    return 
 
             ffmpeg_options = {
                 'before_options': (
