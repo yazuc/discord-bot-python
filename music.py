@@ -5,9 +5,14 @@ import os
 import subprocess
 import discord
 import json
+import sys
 import yt_dlp as youtube_dl
 from discord.ext import commands
-
+if sys.version_info.major == 3:
+    from urllib.parse import urlencode, urlparse, urlunparse, parse_qs
+else:
+    from urllib import urlencode
+    from urlparse import urlparse, urlunparse, parse_qs
 
 class Music(commands.Cog):
     def __init__(self, bot):
@@ -58,6 +63,11 @@ class Music(commands.Cog):
 
             # Extract info directly (no subprocess)
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                u = urlparse(url)
+                query = parse_qs(u.query, keep_blank_values=True)
+                query.pop('list', None)
+                query.pop('start_radio', None)
+                url = urlunparse(u._replace(query=urlencode(query, True)))
                 info_dict = ydl.extract_info(f"ytsearch1:{url}", download=False)
                 if len(info_dict['entries']) > 0:
                     first_result = info_dict['entries'][0]
