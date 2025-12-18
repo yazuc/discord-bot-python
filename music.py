@@ -68,7 +68,12 @@ class Music(commands.Cog):
                 query = parse_qs(u.query, keep_blank_values=True)
                 query.pop('list', None)
                 query.pop('start_radio', None)
-                url = urlunparse(u._replace(query=urlencode(query, True)))
+                
+                if u.hostname == "youtu.be":
+                    url = u.path.split("/")[1]
+                else:
+                    url = urlunparse(u._replace(query=urlencode(query, True)))
+                
                 info_dict = ydl.extract_info(f"ytsearch1:{url}", download=False)
                 if len(info_dict['entries']) > 0:
                     first_result = info_dict['entries'][0]
@@ -139,7 +144,7 @@ class Music(commands.Cog):
             text=True
         )
         count = int(proc.stdout.strip())
-        if count == 2:
+        if count >= 1:
             await ctx.send("Mine está: On")             
         else:
             await ctx.send("Mine está: Off")
@@ -151,13 +156,23 @@ class Music(commands.Cog):
             await ctx.send("Fila vazia")
             return
         
-        await ctx.send("As músicas a seguinte estão na fila:")
+        await ctx.send("As músicas a seguinte estão na fila:") 
 
         musicas = ""
         for x in list(self.queue._queue):
             musicas += x + "\n"
 
         await ctx.send(musicas)        
+    
+    @commands.command()
+    async def next(self, ctx,):
+        """Pula para a próxima música."""
+        if not self.queue.empty():
+            self.playing = False
+            proxima = await self.queue.get()
+            await ctx.send("Pulando para a próxima música na fila: " + proxima)
+            await self.play_youtube_url(ctx, proxima)
+            return
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel = None):
