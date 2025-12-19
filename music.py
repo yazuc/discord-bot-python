@@ -110,6 +110,7 @@ class Music(commands.Cog):
                 await self.play_youtube_url(ctx, await self.queue.get())
             
             await ctx.send("Música terminou!")
+            await ctx.voice_client.disconnect()
             self.playing = False
 
         except Exception as e:
