@@ -1,4 +1,4 @@
-# This example requires the 'message_content' privileged intent to function.
+# This exampled requires the 'message_content' privileged intent to function.
 
 import asyncio
 import os
@@ -126,15 +126,9 @@ class Music(commands.Cog):
             await self.play_youtube_url(ctx, url)
         else:
             await self.queue.put(url)
+            await ctx.send("Música adicionada a fila.")
             print(self.queue)
 
-    @commands.command()
-    async def q(self, ctx, *, url):
-        """Para alimentar a fila enquanto já tiver tocando"""     
-        await self.queue.put(url)
-        await ctx.send("Música adicionada a fila.")
-        print(self.queue)
-    
     @commands.command()
     async def status(self, ctx):
         """Checa se o mine ta rodando"""
