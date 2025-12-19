@@ -8,6 +8,7 @@ import json
 import sys
 import yt_dlp as youtube_dl
 from discord.ext import commands
+from subprocess import call
 if sys.version_info.major == 3:
     from urllib.parse import urlencode, urlparse, urlunparse, parse_qs
 else:
@@ -67,7 +68,12 @@ class Music(commands.Cog):
                 query = parse_qs(u.query, keep_blank_values=True)
                 query.pop('list', None)
                 query.pop('start_radio', None)
-                url = urlunparse(u._replace(query=urlencode(query, True)))
+                
+                if u.hostname == "youtu.be":
+                    url = u.path.split("/")[1]
+                else:
+                    url = urlunparse(u._replace(query=urlencode(query, True)))
+                
                 info_dict = ydl.extract_info(f"ytsearch1:{url}", download=False)
                 if len(info_dict['entries']) > 0:
                     first_result = info_dict['entries'][0]
@@ -115,7 +121,6 @@ class Music(commands.Cog):
     @commands.command()
     async def play(self, ctx, *, url):
         """Para tocar a primeira música"""       
-        print(self.playing)
         if not self.playing:
             await self.play_youtube_url(ctx, url)
         else:
@@ -128,6 +133,21 @@ class Music(commands.Cog):
         await self.queue.put(url)
         await ctx.send("Música adicionada a fila.")
         print(self.queue)
+    
+    @commands.command()
+    async def status(self, ctx):
+        """Checa se o mine ta rodando"""
+        proc = subprocess.run(
+            "ps aux | grep -c java",
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        count = int(proc.stdout.strip())
+        if count >= 1:
+            await ctx.send("Mine está: On")             
+        else:
+            await ctx.send("Mine está: Off")
 
     @commands.command()
     async def f(self, ctx,):
@@ -136,13 +156,26 @@ class Music(commands.Cog):
             await ctx.send("Fila vazia")
             return
         
-        await ctx.send("As músicas a seguinte estão na fila:")
+        await ctx.send("As músicas a seguinte estão na fila:") 
 
         musicas = ""
         for x in list(self.queue._queue):
             musicas += x + "\n"
 
         await ctx.send(musicas)        
+    
+    @commands.command()
+    async def next(self, ctx,):
+        """Pula para a próxima música."""
+        if not self.queue.empty():
+            self.playing = False
+            proxima = await self.queue.get()
+            await ctx.send("Pulando para a próxima música na fila: " + proxima)
+            await self.play_youtube_url(ctx, proxima)
+            return
+        else:
+            await ctx.send("Não tem uma próxima música na fila")
+            return
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel = None):
@@ -185,8 +218,6 @@ class Music(commands.Cog):
             else:
                 await ctx.send('You are not connected to a voice channel.')
                 raise commands.CommandError('Author not connected to a voice channel.')
-        elif ctx.voice_client.is_playing():
-            ctx.voice_client.stop()
 
 
 intents = discord.Intents.default()
@@ -224,3 +255,4 @@ async def main():
 
 
 asyncio.run(main())
+
