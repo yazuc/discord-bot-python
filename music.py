@@ -68,6 +68,7 @@ class Music(commands.Cog):
                 query = parse_qs(u.query, keep_blank_values=True)
                 query.pop('list', None)
                 query.pop('start_radio', None)
+                query.pop('index', None)
                 
                 if u.hostname == "youtu.be":
                     url = u.path.split("/")[1]
@@ -80,7 +81,7 @@ class Music(commands.Cog):
                     audio_url = first_result['url']
                     title = first_result.get('title', 'desconhecido')
                 else:
-                    await ctx.send(f"Erro ao reproduzir música.")
+                    await ctx.send(f"Erro ao reproduzir música: " + url)
                     self.playing = False
                     return 
 
