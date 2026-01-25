@@ -165,7 +165,7 @@ class Music(commands.Cog):
             self.playing = False
             proxima = await self.queue.get()
             await ctx.send("Pulando para a próxima música na fila: " + proxima)
-            await self.play_youtube_url(self, ctx, proxima)
+            await self.play_youtube_url(ctx, proxima)
             return
         else:
             await ctx.send("Não tem uma próxima música na fila")
